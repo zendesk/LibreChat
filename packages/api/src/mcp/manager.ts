@@ -1,5 +1,5 @@
 import { logger } from '@librechat/data-schemas';
-import { CallToolResultSchema, ErrorCode, McpError } from '@modelcontextprotocol/sdk/types.js';
+import { CallToolResultSchema, ErrorCode, McpError, Progress } from '@modelcontextprotocol/sdk/types.js';
 import type { OAuthClientInformation } from '@modelcontextprotocol/sdk/shared/auth.js';
 import type { RequestOptions } from '@modelcontextprotocol/sdk/shared/protocol.js';
 import type { TokenMethods } from '@librechat/data-schemas';
@@ -847,7 +847,7 @@ export class MCPManager {
     try {
       if (userId && user) {
         this.updateUserLastActivity(userId);
-        progressNotifier?.('initializing', `Preparing ${toolName}...`, 0.2);
+        progressNotifier?.('initializing', `Preparing ${toolName}...`, 0.0);
         /** Get or create user-specific connection */
         connection = await this.getUserConnection({
           user,
@@ -877,9 +877,20 @@ export class MCPManager {
           `${logPrefix} Connection is not active. Cannot execute tool ${toolName}.`,
         );
       }
-
-      progressNotifier?.('executing', `Executing ${toolName}...`, 0.5);
       
+      // Prepare request options with onprogress callback
+      const requestOptions: RequestOptions = {
+        timeout: connection.timeout,
+        ...options,
+      };
+
+      // Add onprogress callback to capture MCP-level progress events if available
+      if (progressNotifier) {
+        requestOptions.onprogress = (progress: Progress) => {
+          progressNotifier('executing', progress.message ?? 'Executing task', progress.total ? progress.progress / progress.total : 0.5);
+        };
+      }
+
       const result = await connection.client.request(
         {
           method: 'tools/call',
@@ -889,14 +900,9 @@ export class MCPManager {
           },
         },
         CallToolResultSchema,
-        {
-          timeout: connection.timeout,
-          ...options,
-        },
+        requestOptions,
       );
-      
-      progressNotifier?.('processing', `Processing results...`, 0.8);
-      
+          
       if (userId) {
         this.updateUserLastActivity(userId);
       }
