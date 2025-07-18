@@ -359,6 +359,11 @@ export default function useStepHandler({
               contentPart.tool_call.expires_at = runStepDelta.delta.expires_at;
             }
 
+            // Handle progress information
+            if (toolCallDelta.progress != null) {
+              contentPart.tool_call.progress = toolCallDelta.progress;
+            }
+
             /** Tool calls don't need index adjustment */
             const currentIndex = runStep.index + initialContent.length;
             updatedResponse = updateContent(updatedResponse, currentIndex, contentPart);

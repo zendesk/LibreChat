@@ -17,6 +17,7 @@ export default function ToolCall({
   output,
   attachments,
   auth,
+  progress: mcpProgress,
 }: {
   initialProgress: number;
   isSubmitting: boolean;
@@ -26,6 +27,11 @@ export default function ToolCall({
   attachments?: TAttachment[];
   auth?: string;
   expires_at?: number;
+  progress?: {
+    stage: string;
+    message: string;
+    progress?: number;
+  };
 }) {
   const localize = useLocalize();
   const [showInfo, setShowInfo] = useState(false);
@@ -92,7 +98,9 @@ export default function ToolCall({
     }
   }, [auth]);
 
-  const progress = useProgress(initialProgress);
+  const simulatedProgress = useProgress(initialProgress);
+  // Use MCP progress if available, otherwise fall back to simulated progress
+  const progress = mcpProgress?.progress ?? simulatedProgress;
   const cancelled = (!isSubmitting && progress < 1) || error === true;
 
   const getFinishedText = () => {
@@ -158,9 +166,10 @@ export default function ToolCall({
           progress={progress}
           onClick={() => setShowInfo((prev) => !prev)}
           inProgressText={
-            function_name
+            mcpProgress?.message ?? 
+            (function_name
               ? localize('com_assistants_running_var', { 0: function_name })
-              : localize('com_assistants_running_action')
+              : localize('com_assistants_running_action'))
           }
           authText={
             !cancelled && authDomain.length > 0 ? localize('com_ui_requires_auth') : undefined

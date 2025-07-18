@@ -79,6 +79,34 @@ function createOAuthEnd({ res, stepId, toolCall }) {
 
 /**
  * @param {object} params
+ * @param {ServerResponse} params.res - The Express response object for sending events.
+ * @param {string} params.stepId - The ID of the step in the flow.
+ * @param {ToolCallChunk} params.toolCall - The tool call object containing tool information.
+ */
+function createProgressNotifier({ res, stepId, toolCall }) {
+  return function (stage, message, progress) {
+    /** @type {{ id: string; delta: AgentToolCallDelta }} */
+    const data = {
+      id: stepId,
+      delta: {
+        type: StepTypes.TOOL_CALLS,
+        tool_calls: [{
+          ...toolCall,
+          progress: {
+            stage,
+            message,
+            progress: typeof progress === 'number' ? progress : undefined,
+          },
+        }],
+      },
+    };
+    sendEvent(res, { event: GraphEvents.ON_RUN_STEP_DELTA, data });
+    logger.debug(`Sent MCP progress update: ${stage} - ${message}`);
+  };
+}
+
+/**
+ * @param {object} params
  * @param {string} params.userId - The ID of the user.
  * @param {string} params.serverName - The name of the server.
  * @param {string} params.toolName - The name of the tool.
@@ -162,6 +190,11 @@ async function createMCPTool({ req, res, toolKey, provider: _provider }) {
         stepId,
         toolCall,
       });
+      const progressNotifier = createProgressNotifier({
+        res,
+        stepId,
+        toolCall,
+      });
 
       if (derivedSignal) {
         abortHandler = createAbortHandler({ userId, serverName, toolName, flowManager });
@@ -170,6 +203,9 @@ async function createMCPTool({ req, res, toolKey, provider: _provider }) {
 
       const customUserVars =
         config?.configurable?.userMCPAuthMap?.[`${Constants.mcp_prefix}${serverName}`];
+
+      // Send initial progress notification
+      progressNotifier('connecting', `Connecting to ${serverName}...`, 0.1);
 
       const result = await mcpManager.callTool({
         serverName,
@@ -189,6 +225,7 @@ async function createMCPTool({ req, res, toolKey, provider: _provider }) {
         },
         oauthStart,
         oauthEnd,
+        progressNotifier,
       });
 
       if (isAssistantsEndpoint(provider) && Array.isArray(result)) {

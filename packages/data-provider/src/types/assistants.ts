@@ -315,6 +315,12 @@ export type FunctionToolCall = {
     output: string | null; // The output of the function, null if not submitted.
   };
   type: 'function'; // The type of tool call, always 'function'.
+  /** Progress information for MCP tool calls */
+  progress?: {
+    stage: string;
+    message: string;
+    progress?: number;
+  };
 };
 
 /**

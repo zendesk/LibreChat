@@ -66,6 +66,12 @@ export namespace Agents {
     auth?: string;
     /** Expiration time */
     expires_at?: number;
+    /** Progress information for MCP tool calls */
+    progress?: {
+      stage: string;
+      message: string;
+      progress?: number;
+    };
   };
 
   export type ToolEndEvent = {
@@ -142,6 +148,13 @@ export namespace Agents {
     index?: number;
 
     type?: 'tool_call_chunk';
+
+    /** Progress information for MCP tool calls */
+    progress?: {
+      stage: string;
+      message: string;
+      progress?: number;
+    };
   };
 
   /** Event names are of the format: on_[runnable_type]_(start|stream|end).

@@ -823,6 +823,7 @@ export class MCPManager {
     flowManager,
     oauthStart,
     oauthEnd,
+    progressNotifier,
     customUserVars,
   }: {
     user?: TUser;
@@ -836,6 +837,7 @@ export class MCPManager {
     flowManager: FlowStateManager<MCPOAuthTokens | null>;
     oauthStart?: (authURL: string) => Promise<void>;
     oauthEnd?: () => Promise<void>;
+    progressNotifier?: (stage: string, message: string, progress?: number) => void;
   }): Promise<t.FormattedToolResponse> {
     /** User-specific connection */
     let connection: MCPConnection | undefined;
@@ -845,6 +847,7 @@ export class MCPManager {
     try {
       if (userId && user) {
         this.updateUserLastActivity(userId);
+        progressNotifier?.('initializing', `Preparing ${toolName}...`, 0.2);
         /** Get or create user-specific connection */
         connection = await this.getUserConnection({
           user,
@@ -875,6 +878,8 @@ export class MCPManager {
         );
       }
 
+      progressNotifier?.('executing', `Executing ${toolName}...`, 0.5);
+      
       const result = await connection.client.request(
         {
           method: 'tools/call',
@@ -889,10 +894,16 @@ export class MCPManager {
           ...options,
         },
       );
+      
+      progressNotifier?.('processing', `Processing results...`, 0.8);
+      
       if (userId) {
         this.updateUserLastActivity(userId);
       }
       this.checkIdleConnections();
+      
+      progressNotifier?.('completed', `${toolName} completed`, 1.0);
+      
       return formatToolContent(result as t.MCPToolCallResponse, provider);
     } catch (error) {
       // Log with context and re-throw or handle as needed

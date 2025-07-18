@@ -124,11 +124,14 @@ const Part = memo(
             args={toolCall.args ?? ''}
             name={toolCall.name || ''}
             output={toolCall.output ?? ''}
-            initialProgress={toolCall.progress ?? 0.1}
+            initialProgress={
+              typeof toolCall.progress === 'object' ? toolCall.progress?.progress ?? 0.1 : toolCall.progress ?? 0.1
+            }
             isSubmitting={isSubmitting}
             attachments={attachments}
             auth={toolCall.auth}
             expires_at={toolCall.expires_at}
+            progress={typeof toolCall.progress === 'object' ? toolCall.progress : undefined}
           />
         );
       } else if (toolCall.type === ToolCallTypes.CODE_INTERPRETER) {
